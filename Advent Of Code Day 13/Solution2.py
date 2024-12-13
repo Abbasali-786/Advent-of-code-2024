@@ -1,107 +1,89 @@
-def find_regions(grid):
-    rows, cols = len(grid), len(grid[0])
-    visited = set()
-    regions = []
+def extended_gcd(a, b):
+    if a == 0:
+        return b, 0, 1
+    gcd, x1, y1 = extended_gcd(b % a, a)
+    x = y1 - (b // a) * x1
+    y = x1
+    return gcd, x, y
 
-    def dfs(r, c, plant_type):
-        if (r, c) in visited or r < 0 or c < 0 or r >= rows or c >= cols or grid[r][c] != plant_type:
-            return set()
+def find_solution(a1, a2, b1, b2, target_x, target_y):
+    print(f"\nSolving for equations:")
 
-        cells = {(r, c)}
-        visited.add((r, c))
 
-        for dr, dc in [(0, 1), (1, 0), (0, -1), (-1, 0)]:
-            cells.update(dfs(r + dr, c + dc, plant_type))
+    # Calculate determinant
+    det = a1 * b2 - a2 * b1
 
-        return cells
+    if det == 0:
+        print("No solution - equations are dependent")
+        return None
 
-    for r in range(rows):
-        for c in range(cols):
-            if (r, c) not in visited:
-                region = dfs(r, c, grid[r][c])
-                if region:
-                    regions.append(region)
+    # Using Cramer's rule
+    n = (target_x * b2 - target_y * b1) / det
+    m = (a1 * target_y - a2 * target_x) / det
 
-    return regions
+    # Check if solution is integer and non-negative
+    if n != int(n) or m != int(m) or n < 0 or m < 0:
+        print(f"No valid solution: A={n}, B={m}")
+        return None
 
-def count_sides(region, grid):
-    rows, cols = len(grid), len(grid[0])
-    sides = 0
-    visited_edges = set()
+    n = int(n)
+    m = int(m)
 
-    def trace_line(r, c, dr, dc):
-        nr, nc = r + dr, c + dc
-        return (nr < 0 or nc < 0 or nr >= rows or nc >= cols or (nr, nc) not in region)
+    # Verify solution
+    if (a1 * n + b1 * m == target_x) and (a2 * n + b2 * m == target_y):
+        print(f"Found solution: A={n}, B={m}")
+        return (n, m)
 
-    # Count horizontal lines
-    for r, c in region:
-        # Check up
-        if (r, c, 'u') not in visited_edges and trace_line(r, c, -1, 0):
-            start_c = c
-            while (r, start_c-1) in region and trace_line(r, start_c-1, -1, 0):
-                start_c -= 1
-            end_c = c
-            while (r, end_c+1) in region and trace_line(r, end_c+1, -1, 0):
-                end_c += 1
-            sides += 1
-            for i in range(start_c, end_c+1):
-                visited_edges.add((r, i, 'u'))
+    return None
 
-        # Check down
-        if (r, c, 'd') not in visited_edges and trace_line(r, c, 1, 0):
-            start_c = c
-            while (r, start_c-1) in region and trace_line(r, start_c-1, 1, 0):
-                start_c -= 1
-            end_c = c
-            while (r, end_c+1) in region and trace_line(r, end_c+1, 1, 0):
-                end_c += 1
-            sides += 1
-            for i in range(start_c, end_c+1):
-                visited_edges.add((r, i, 'd'))
+def solve_claw_machines_part2(input_data):
+    total_tokens = 0
+    possible_prizes = 0
+    OFFSET = 10000000000000
 
-    # Count vertical lines
-    for r, c in region:
-        # Check left
-        if (r, c, 'l') not in visited_edges and trace_line(r, c, 0, -1):
-            start_r = r
-            while (start_r-1, c) in region and trace_line(start_r-1, c, 0, -1):
-                start_r -= 1
-            end_r = r
-            while (end_r+1, c) in region and trace_line(end_r+1, c, 0, -1):
-                end_r += 1
-            sides += 1
-            for i in range(start_r, end_r+1):
-                visited_edges.add((i, c, 'l'))
+    lines = input_data.strip().split('\n')
 
-        # Check right
-        if (r, c, 'r') not in visited_edges and trace_line(r, c, 0, 1):
-            start_r = r
-            while (start_r-1, c) in region and trace_line(start_r-1, c, 0, 1):
-                start_r -= 1
-            end_r = r
-            while (end_r+1, c) in region and trace_line(end_r+1, c, 0, 1):
-                end_r += 1
-            sides += 1
-            for i in range(start_r, end_r+1):
-                visited_edges.add((i, c, 'r'))
+    for i in range(0, len(lines), 4):
+        if i + 2 >= len(lines):
+            break
 
-    return sides
 
-def solve_part2(input_text):
-    grid = [list(line.strip()) for line in input_text.strip().split('\n')]
-    regions = find_regions(grid)
+        # Parse input
+        a_line = lines[i].strip()
+        ax = int(a_line[a_line.find('X+')+2:a_line.find(',')])
+        ay = int(a_line[a_line.find('Y+')+2:])
 
-    total_price = 0
-    for region in regions:
-        area = len(region)
-        num_sides = count_sides(region, grid)
-        price = area * num_sides
-        total_price += price
+        b_line = lines[i+1].strip()
+        bx = int(b_line[b_line.find('X+')+2:b_line.find(',')])
+        by = int(b_line[b_line.find('Y+')+2:])
 
-    return total_price
+        p_line = lines[i+2].strip()
+        px = int(p_line[p_line.find('X=')+2:p_line.find(',')]) + OFFSET
+        py = int(p_line[p_line.find('Y=')+2:]) + OFFSET
 
-with open('input.txt', 'r') as f:
-    input_text = f.read()
 
-result = solve_part2(input_text)
-print(result)
+        # Find solution
+        solution = find_solution(ax, ay, bx, by, px, py)
+
+        if solution:
+            n, m = solution
+            tokens = 3 * n + m
+            total_tokens += tokens
+            possible_prizes += 1
+            print(f"Tokens needed: {tokens}")
+        else:
+            print("No solution found")
+
+    return total_tokens, possible_prizes
+
+# Function to read input from file and process it
+def read_input_file(file_path):
+    with open(file_path, 'r') as file:
+        input_data = file.read()
+    return input_data
+
+# Sample usage
+input_file_path = 'input.txt'  # Path to the input file
+input_data = read_input_file(input_file_path)
+total_tokens, possible_prizes = solve_claw_machines_part2(input_data)
+print(f"Total tokens needed: {total_tokens}")
